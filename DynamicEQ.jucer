@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="R0pXtZ" name="DynamicEQ" projectType="audioplug" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
+  <MAINGROUP id="X2SsPE" name="DynamicEQ">
+    <GROUP id="{D507FE42-8038-5EF5-4D65-DC38DCED0422}" name="Source">
+      <GROUP id="{A1B2C3D4-1111-2222-3333-444455556666}" name="DSP">
+        <FILE id="dspSpec01" name="SpectrumAnalyzer.h" compile="0" resource="0"
+              file="Source/DSP/SpectrumAnalyzer.h"/>
+        <FILE id="dspBand01" name="DynamicEQBand.h" compile="0" resource="0"
+              file="Source/DSP/DynamicEQBand.h"/>
+      </GROUP>
+      <GROUP id="{B2C3D4E5-5555-6666-7777-888899990000}" name="UI">
+        <FILE id="uiSpec01" name="SpectrumComponent.h" compile="0" resource="0"
+              file="Source/UI/SpectrumComponent.h"/>
+      </GROUP>
+      <FILE id="aBqzBS" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="qn5nWH" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="frXaG8" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="XhSmvV" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors_headless" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_opengl" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
+  <EXPORTFORMATS>
+    <VS2026 targetFolder="Builds/VisualStudio2026">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="DynamicEQ"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="DynamicEQ"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../App/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../App/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../App/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../App/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../App/modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="../../App/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../App/modules"/>
+        <MODULEPATH id="juce_core" path="../../App/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../App/modules"/>
+        <MODULEPATH id="juce_dsp" path="../../App/modules"/>
+        <MODULEPATH id="juce_events" path="../../App/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../App/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../App/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../App/modules"/>
+        <MODULEPATH id="juce_opengl" path="../../App/modules"/>
+      </MODULEPATHS>
+    </VS2026>
+  </EXPORTFORMATS>
+</JUCERPROJECT>

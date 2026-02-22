@@ -1,0 +1,102 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build: Standalone (Debug)",
+            "type": "process",
+            "command": "D:/Application/VisualStudio/MSBuild/Current/Bin/amd64/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/Builds/VisualStudio2026/DynamicEQ.sln",
+                "/p:Configuration=Debug",
+                "/p:Platform=x64",
+                "/m",
+                "/nologo",
+                "/v:minimal"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build: Standalone (Release)",
+            "type": "process",
+            "command": "D:/Application/VisualStudio/MSBuild/Current/Bin/amd64/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/Builds/VisualStudio2026/DynamicEQ.sln",
+                "/p:Configuration=Release",
+                "/p:Platform=x64",
+                "/m",
+                "/nologo",
+                "/v:minimal"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build: All (Debug)",
+            "type": "process",
+            "command": "D:/Application/VisualStudio/MSBuild/Current/Bin/amd64/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/Builds/VisualStudio2026/DynamicEQ.sln",
+                "/p:Configuration=Debug",
+                "/p:Platform=x64",
+                "/m",
+                "/nologo",
+                "/v:minimal"
+            ],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": "$msCompile",
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build: All (Release)",
+            "type": "process",
+            "command": "D:/Application/VisualStudio/MSBuild/Current/Bin/amd64/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/Builds/VisualStudio2026/DynamicEQ.sln",
+                "/p:Configuration=Release",
+                "/p:Platform=x64",
+                "/m",
+                "/nologo",
+                "/v:minimal"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Rebuild: All (Debug)",
+            "type": "process",
+            "command": "D:/Application/VisualStudio/MSBuild/Current/Bin/amd64/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/Builds/VisualStudio2026/DynamicEQ.sln",
+                "/t:Rebuild",
+                "/p:Configuration=Debug",
+                "/p:Platform=x64",
+                "/m",
+                "/nologo",
+                "/v:minimal"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Clean: All",
+            "type": "process",
+            "command": "D:/Application/VisualStudio/MSBuild/Current/Bin/amd64/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/Builds/VisualStudio2026/DynamicEQ.sln",
+                "/t:Clean",
+                "/p:Configuration=Debug",
+                "/p:Platform=x64",
+                "/nologo",
+                "/v:minimal"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        }
+    ]
+}

@@ -1,0 +1,53 @@
+{
+    "configurations": [
+        {
+            "name": "JUCE Plugin (MSVC)",
+            "intelliSenseMode": "windows-msvc-x64",
+            "compilerPath": "D:/Application/VisualStudio/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "windowsSdkVersion": "10.0.22621.0",
+            "includePath": [
+                "${workspaceFolder}/Source",
+                "${workspaceFolder}/JuceLibraryCode",
+                "D:/C++repositories/JUCE/App/modules",
+                "D:/C++repositories/JUCE/App/modules/juce_audio_processors_headless/format_types/VST3_SDK"
+            ],
+            "defines": [
+                "_CRT_SECURE_NO_WARNINGS",
+                "WIN32",
+                "_WINDOWS",
+                "DEBUG",
+                "_DEBUG",
+                "JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_basics=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_devices=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_formats=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_plugin_client=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_processors=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_processors_headless=1",
+                "JUCE_MODULE_AVAILABLE_juce_audio_utils=1",
+                "JUCE_MODULE_AVAILABLE_juce_core=1",
+                "JUCE_MODULE_AVAILABLE_juce_data_structures=1",
+                "JUCE_MODULE_AVAILABLE_juce_dsp=1",
+                "JUCE_MODULE_AVAILABLE_juce_events=1",
+                "JUCE_MODULE_AVAILABLE_juce_graphics=1",
+                "JUCE_MODULE_AVAILABLE_juce_gui_basics=1",
+                "JUCE_MODULE_AVAILABLE_juce_gui_extra=1",
+                "JUCE_MODULE_AVAILABLE_juce_opengl=1",
+                "JUCE_STRICT_REFCOUNTEDPOINTER=1",
+                "JUCE_VST3_CAN_REPLACE_VST2=0",
+                "JucePlugin_Build_VST=0",
+                "JucePlugin_Build_VST3=1",
+                "JucePlugin_Build_AU=0",
+                "JucePlugin_Build_AUv3=0",
+                "JucePlugin_Build_AAX=0",
+                "JucePlugin_Build_Standalone=1",
+                "JucePlugin_Build_Unity=0",
+                "JucePlugin_Build_LV2=0",
+                "JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone"
+            ]
+        }
+    ],
+    "version": 4
+}

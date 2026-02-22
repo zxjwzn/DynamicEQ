@@ -1,0 +1,26 @@
+{
+    "files.exclude": {
+        "**/.vs": true,
+        "**/x64": true,
+        "Builds/VisualStudio2026/x64": true,
+        "Builds/VisualStudio2026/.vs": true
+    },
+    "search.exclude": {
+        "**/.vs": true,
+        "**/x64": true,
+        "Builds": true,
+        "JuceLibraryCode": true
+    },
+    "files.associations": {
+        "*.jucer": "xml"
+    },
+    "editor.formatOnSave": false,
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
+    "C_Cpp.errorSquiggles": "enabled"
+}
