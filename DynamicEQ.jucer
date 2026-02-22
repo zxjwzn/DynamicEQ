@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="R0pXtZ" name="DynamicEQ" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="YourCompany"
+              companyWebsite="yourwebsite.com" companyEmail="your@email.com"
+              companyCopyright="Copyright (c) 2026 YourCompany" license="MIT">
   <MAINGROUP id="X2SsPE" name="DynamicEQ">
     <GROUP id="{D507FE42-8038-5EF5-4D65-DC38DCED0422}" name="Source">
       <GROUP id="{A1B2C3D4-1111-2222-3333-444455556666}" name="DSP">
