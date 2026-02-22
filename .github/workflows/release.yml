@@ -1,0 +1,132 @@
+# ==============================================================================
+#  DynamicEQ — Build ・ Package ・ Release
+#
+#  触发条件:
+#    - 推送 v* 标签  →  构建 + 创建 GitHub Release
+#    - 推送 main     →  仅构建（CI 验证）
+#    - PR → main     →  仅构建（CI 验证）
+#    - 手动触发      →  构建 + 可选 Release
+# ==============================================================================
+
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a GitHub Release?"
+        type: boolean
+        default: false
+      release_tag:
+        description: "Release tag (e.g. v1.0.0). Required when creating a release."
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows x64 (${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && 'Release' || 'CI' }})
+    runs-on: windows-latest
+
+    steps:
+      # ── Checkout ───────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Cache JUCE FetchContent ────────────────────────────────────────────
+      - name: Cache JUCE
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            juce-${{ runner.os }}-
+
+      # ── CMake Configure ────────────────────────────────────────────────────
+      - name: Configure CMake
+        run: cmake -B build
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      # ── Package artefacts ──────────────────────────────────────────────────
+      - name: Package Standalone
+        shell: pwsh
+        run: |
+          $src = "build/DynamicEQ_artefacts/${{ env.BUILD_TYPE }}/Standalone"
+          if (-not (Test-Path $src)) {
+            Write-Error "Standalone artefact directory not found: $src"
+            exit 1
+          }
+          Compress-Archive -Path "$src/*" -DestinationPath "DynamicEQ-Standalone-Win64.zip" -Force
+          Write-Host "✅ Packaged Standalone → DynamicEQ-Standalone-Win64.zip"
+
+      - name: Package VST3
+        shell: pwsh
+        run: |
+          $src = "build/DynamicEQ_artefacts/${{ env.BUILD_TYPE }}/VST3"
+          if (-not (Test-Path $src)) {
+            Write-Error "VST3 artefact directory not found: $src"
+            exit 1
+          }
+          Compress-Archive -Path "$src/*" -DestinationPath "DynamicEQ-VST3-Win64.zip" -Force
+          Write-Host "✅ Packaged VST3 → DynamicEQ-VST3-Win64.zip"
+
+      # ── Upload build artefacts (always) ────────────────────────────────────
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DynamicEQ-Win64
+          path: |
+            DynamicEQ-Standalone-Win64.zip
+            DynamicEQ-VST3-Win64.zip
+          retention-days: 30
+
+      # ── Create GitHub Release (tag push only) ──────────────────────────────
+      - name: Determine release tag
+        id: tag
+        if: |
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'workflow_dispatch' && inputs.create_release)
+        shell: pwsh
+        run: |
+          if ("${{ github.ref }}".StartsWith("refs/tags/")) {
+            $tag = "${{ github.ref_name }}"
+          } else {
+            $tag = "${{ inputs.release_tag }}"
+          }
+
+          if (-not $tag) {
+            Write-Error "Release tag is empty. Please provide a tag."
+            exit 1
+          }
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+          Write-Host "📦 Release tag: $tag"
+
+      - name: Create GitHub Release
+        if: steps.tag.outputs.TAG
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          name: DynamicEQ ${{ steps.tag.outputs.TAG }}
+          files: |
+            DynamicEQ-Standalone-Win64.zip
+            DynamicEQ-VST3-Win64.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
