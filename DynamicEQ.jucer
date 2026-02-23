@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="R0pXtZ" name="DynamicEQ" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="YourCompany"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="yourCompany"
               companyWebsite="yourwebsite.com" companyEmail="your@email.com"
               companyCopyright="Copyright (c) 2026 YourCompany" license="MIT">
   <MAINGROUP id="X2SsPE" name="DynamicEQ">

@@ -217,16 +217,20 @@ $sourceFiles = Get-JucerSourceFiles -Node $jucer.JUCERPROJECT.MAINGROUP
 Write-Host "[*] 源文件数量: $($sourceFiles.Count)" -ForegroundColor Cyan
 
 # ==================== 读取插件元数据 ====================
-$pluginManufacturer = $jucer.JUCERPROJECT.pluginManufacturer
+# 使用 GetAttribute() 安全访问可能不存在的 XML 属性（兼容 StrictMode）
+$jucerRoot = $jucer.JUCERPROJECT
+
+$pluginManufacturer     = $jucerRoot.GetAttribute("pluginManufacturer")
+if (-not $pluginManufacturer) { $pluginManufacturer = $jucerRoot.GetAttribute("companyName") }
 if (-not $pluginManufacturer) { $pluginManufacturer = "yourcompany" }
 
-$pluginManufacturerCode = $jucer.JUCERPROJECT.pluginManufacturerCode
+$pluginManufacturerCode = $jucerRoot.GetAttribute("pluginManufacturerCode")
 if (-not $pluginManufacturerCode) { $pluginManufacturerCode = "Manu" }
 
-$pluginCode = $jucer.JUCERPROJECT.pluginCode
+$pluginCode             = $jucerRoot.GetAttribute("pluginCode")
 if (-not $pluginCode) { $pluginCode = "Plgn" }
 
-$projectVersion = $jucer.JUCERPROJECT.version
+$projectVersion         = $jucerRoot.GetAttribute("version")
 if (-not $projectVersion) { $projectVersion = "1.0.0" }
 
 # 检测插件格式
