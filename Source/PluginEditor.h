@@ -94,7 +94,7 @@ private:
 
     static constexpr int navBarH    = 28;
     static constexpr int controlH   = 290;
-    static constexpr int stripMinW  = 200;   // minimum strip width (triggers scroll)
+    static constexpr int stripMinW  = 220;   // minimum strip width (triggers scroll)
     static constexpr int stripMaxW  = 250;   // maximum strip width (prevents over-stretch)
 
     void updateBandVisibility();
