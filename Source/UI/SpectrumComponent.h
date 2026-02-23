@@ -216,10 +216,8 @@ private:
             postSA.processFFT(postSpectrumData);
 
         // Smooth the spectrum data
-        // Smooth spectrum: faster attack (signal rises quickly), slower release (decay lingers)
-        // attack coeff 0.20 = fast rise, release coeff 0.55 = moderate decay
         const float attackSmooth  = 0.20f;
-        const float releaseSmooth = 0.55f;
+        const float releaseSmooth = 0.97f;
         for (size_t i = 0; i < smoothedPreSpectrum.size(); ++i)
         {
             float preCoeff  = preSpectrumData[i]  > smoothedPreSpectrum[i]  ? attackSmooth  : releaseSmooth;
