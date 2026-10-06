@@ -55,6 +55,9 @@ class SpectrumComponent : public juce::Component,
                           public juce::Timer
 {
 public:
+    // Spectrum display modes
+    enum class SpectrumDisplayMode { LR_Mix, LR_Split, MS_Split };
+
     SpectrumComponent(DynamicEQAudioProcessor &p)
         : processor(p)
     {
@@ -63,6 +66,33 @@ public:
 
         smoothedPreSpectrum.fill(0.0f);
         smoothedPostSpectrum.fill(0.0f);
+        smoothedPreL.fill(0.0f);
+        smoothedPreR.fill(0.0f);
+        smoothedPostL.fill(0.0f);
+        smoothedPostR.fill(0.0f);
+
+        // Spectrum mode button
+        spectrumModeBtn.setButtonText ("L+R");
+        spectrumModeBtn.setTooltip (juce::String::fromUTF8 ("\u5207\u6362\u9891\u8c31\u663e\u793a\u6a21\u5f0f"));
+        spectrumModeBtn.onClick = [this]()
+        {
+            switch (spectrumDisplayMode)
+            {
+                case SpectrumDisplayMode::LR_Mix:
+                    spectrumDisplayMode = SpectrumDisplayMode::LR_Split;
+                    spectrumModeBtn.setButtonText ("L/R");
+                    break;
+                case SpectrumDisplayMode::LR_Split:
+                    spectrumDisplayMode = SpectrumDisplayMode::MS_Split;
+                    spectrumModeBtn.setButtonText ("M/S");
+                    break;
+                case SpectrumDisplayMode::MS_Split:
+                    spectrumDisplayMode = SpectrumDisplayMode::LR_Mix;
+                    spectrumModeBtn.setButtonText ("L+R");
+                    break;
+            }
+        };
+        addAndMakeVisible(spectrumModeBtn);
     }
 
     ~SpectrumComponent() override
@@ -81,11 +111,38 @@ public:
         // Draw grid
         drawGrid(g, bounds);
 
-        // Draw pre-EQ spectrum (dimmer)
-        drawSpectrum(g, bounds, smoothedPreSpectrum, juce::Colour(0x30FFFFFF), juce::Colour(0x08FFFFFF));
-
-        // Draw post-EQ spectrum (brighter)
-        drawSpectrum(g, bounds, smoothedPostSpectrum, juce::Colour(0x6000D4FF), juce::Colour(0x1800D4FF));
+        // Draw spectrum based on display mode
+        switch (spectrumDisplayMode)
+        {
+            case SpectrumDisplayMode::LR_Mix:
+            {
+                // Pre-EQ spectrum (dimmer)
+                drawSpectrum(g, bounds, smoothedPreSpectrum, juce::Colour(0x30FFFFFF), juce::Colour(0x08FFFFFF));
+                // Post-EQ spectrum (brighter)
+                drawSpectrum(g, bounds, smoothedPostSpectrum, juce::Colour(0x6000D4FF), juce::Colour(0x1800D4FF));
+                break;
+            }
+            case SpectrumDisplayMode::LR_Split:
+            {
+                // Pre-EQ: L=blue dim, R=red dim
+                drawSpectrum(g, bounds, smoothedPreL, juce::Colour(0x204D96FF), juce::Colour(0x064D96FF));
+                drawSpectrum(g, bounds, smoothedPreR, juce::Colour(0x20FF6B6B), juce::Colour(0x06FF6B6B));
+                // Post-EQ: L=blue, R=red
+                drawSpectrum(g, bounds, smoothedPostL, juce::Colour(0x604D96FF), juce::Colour(0x184D96FF));
+                drawSpectrum(g, bounds, smoothedPostR, juce::Colour(0x60FF6B6B), juce::Colour(0x18FF6B6B));
+                break;
+            }
+            case SpectrumDisplayMode::MS_Split:
+            {
+                // Pre-EQ: M=white dim, S=yellow dim
+                drawSpectrum(g, bounds, smoothedPreMid, juce::Colour(0x20FFFFFF), juce::Colour(0x06FFFFFF));
+                drawSpectrum(g, bounds, smoothedPreSide, juce::Colour(0x20FFD93D), juce::Colour(0x06FFD93D));
+                // Post-EQ: M=white, S=yellow
+                drawSpectrum(g, bounds, smoothedPostMid, juce::Colour(0x60FFFFFF), juce::Colour(0x18FFFFFF));
+                drawSpectrum(g, bounds, smoothedPostSide, juce::Colour(0x60FFD93D), juce::Colour(0x18FFD93D));
+                break;
+            }
+        }
 
         // Draw EQ curves from cached data
         drawCachedEQCurve(g, bounds);
@@ -102,11 +159,16 @@ public:
         // Draw border
         g.setColour(juce::Colour(0xFF333355));
         g.drawRect(bounds, 1.0f);
+
+        // Draw spectrum mode legend in top-right corner (next to button)
+        drawSpectrumLegend(g);
     }
 
     void resized() override
     {
         curveNeedsUpdate = true;
+        // Place the spectrum mode button in top-right corner
+        spectrumModeBtn.setBounds(getWidth() - 46, 4, 42, 20);
     }
 
     //==============================================================================
@@ -163,11 +225,31 @@ public:
 private:
     DynamicEQAudioProcessor &processor;
 
-    // Spectrum data
+    // Spectrum display mode
+    SpectrumDisplayMode spectrumDisplayMode = SpectrumDisplayMode::LR_Mix;
+    juce::TextButton spectrumModeBtn;
+
+    // Spectrum data — mono (L+R mix)
     std::array<float, SpectrumAnalyzer::fftSize / 2> preSpectrumData{};
     std::array<float, SpectrumAnalyzer::fftSize / 2> postSpectrumData{};
     std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPreSpectrum{};
     std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPostSpectrum{};
+
+    // Spectrum data — per-channel L/R
+    std::array<float, SpectrumAnalyzer::fftSize / 2> preSpectrumDataL{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> preSpectrumDataR{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> postSpectrumDataL{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> postSpectrumDataR{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPreL{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPreR{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPostL{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPostR{};
+
+    // Spectrum data — computed M/S (derived from L/R in GUI thread)
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPreMid{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPreSide{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPostMid{};
+    std::array<float, SpectrumAnalyzer::fftSize / 2> smoothedPostSide{};
 
     // Cached EQ curve data (per-band magnitudes in dB, sampled at curveNumPoints)
     static constexpr int curveNumPoints = 1024;
@@ -181,6 +263,7 @@ private:
     {
         float freq = 0, gain = 0, q = 0, gr = 0;
         int type = 0;
+        int channel = 0;  // ChannelMode index
         bool enabled = false, dynamic = false;
     };
     std::array<BandSnapshot, DynamicEQAudioProcessor::numBands> lastSnapshots{};
@@ -205,7 +288,7 @@ private:
     //==============================================================================
     void timerCallback() override
     {
-        // Process pre/post spectrum FFT
+        // Process pre/post spectrum FFT (mono mix)
         auto &preSA = processor.getPreSpectrumAnalyzer();
         auto &postSA = processor.getPostSpectrumAnalyzer();
 
@@ -215,15 +298,53 @@ private:
         if (postSA.isNewDataAvailable())
             postSA.processFFT(postSpectrumData);
 
+        // Process per-channel L/R spectrum FFT
+        auto &preL = processor.getPreSpectrumL();
+        auto &preR = processor.getPreSpectrumR();
+        auto &postL = processor.getPostSpectrumL();
+        auto &postR = processor.getPostSpectrumR();
+
+        if (preL.isNewDataAvailable())
+            preL.processFFT(preSpectrumDataL);
+        if (preR.isNewDataAvailable())
+            preR.processFFT(preSpectrumDataR);
+        if (postL.isNewDataAvailable())
+            postL.processFFT(postSpectrumDataL);
+        if (postR.isNewDataAvailable())
+            postR.processFFT(postSpectrumDataR);
+
         // Smooth the spectrum data
         const float attackSmooth  = 0.20f;
         const float releaseSmooth = 0.97f;
-        for (size_t i = 0; i < smoothedPreSpectrum.size(); ++i)
+
+        auto smoothArray = [&](std::array<float, SpectrumAnalyzer::fftSize / 2>& smoothed,
+                               const std::array<float, SpectrumAnalyzer::fftSize / 2>& raw)
         {
-            float preCoeff  = preSpectrumData[i]  > smoothedPreSpectrum[i]  ? attackSmooth  : releaseSmooth;
-            float postCoeff = postSpectrumData[i] > smoothedPostSpectrum[i] ? attackSmooth  : releaseSmooth;
-            smoothedPreSpectrum[i]  = preCoeff  * smoothedPreSpectrum[i]  + (1.0f - preCoeff)  * preSpectrumData[i];
-            smoothedPostSpectrum[i] = postCoeff * smoothedPostSpectrum[i] + (1.0f - postCoeff) * postSpectrumData[i];
+            for (size_t i = 0; i < smoothed.size(); ++i)
+            {
+                float coeff = raw[i] > smoothed[i] ? attackSmooth : releaseSmooth;
+                smoothed[i] = coeff * smoothed[i] + (1.0f - coeff) * raw[i];
+            }
+        };
+
+        smoothArray(smoothedPreSpectrum, preSpectrumData);
+        smoothArray(smoothedPostSpectrum, postSpectrumData);
+        smoothArray(smoothedPreL, preSpectrumDataL);
+        smoothArray(smoothedPreR, preSpectrumDataR);
+        smoothArray(smoothedPostL, postSpectrumDataL);
+        smoothArray(smoothedPostR, postSpectrumDataR);
+
+        // Compute M/S from L/R (approximate in magnitude domain)
+        // M ≈ (L+R)/2, S ≈ |L-R|/2  (magnitudes, not complex — visual approximation)
+        if (spectrumDisplayMode == SpectrumDisplayMode::MS_Split)
+        {
+            for (size_t i = 0; i < smoothedPreMid.size(); ++i)
+            {
+                smoothedPreMid[i]   = (smoothedPreL[i]  + smoothedPreR[i])  * 0.5f;
+                smoothedPreSide[i]  = std::abs(smoothedPreL[i]  - smoothedPreR[i])  * 0.5f;
+                smoothedPostMid[i]  = (smoothedPostL[i] + smoothedPostR[i]) * 0.5f;
+                smoothedPostSide[i] = std::abs(smoothedPostL[i] - smoothedPostR[i]) * 0.5f;
+            }
         }
 
         // Check if curve parameters changed
@@ -256,12 +377,13 @@ private:
             snap.gain = apvts.getRawParameterValue(prefix + "gain")->load();
             snap.q = apvts.getRawParameterValue(prefix + "q")->load();
             snap.type = static_cast<int>(apvts.getRawParameterValue(prefix + "type")->load());
+            snap.channel = static_cast<int>(apvts.getRawParameterValue(prefix + "channel")->load());
             snap.enabled = apvts.getRawParameterValue(prefix + "enabled")->load() > 0.5f;
             snap.dynamic = apvts.getRawParameterValue(prefix + "dynamic")->load() > 0.5f;
             snap.gr = snap.dynamic ? processor.getBandGainReduction(i) : 0.0f;
 
             auto &last = lastSnapshots[static_cast<size_t>(i)];
-            if (snap.freq != last.freq || snap.gain != last.gain || snap.q != last.q || snap.type != last.type || snap.enabled != last.enabled || snap.dynamic != last.dynamic || std::abs(snap.gr - last.gr) > 0.05f)
+            if (snap.freq != last.freq || snap.gain != last.gain || snap.q != last.q || snap.type != last.type || snap.channel != last.channel || snap.enabled != last.enabled || snap.dynamic != last.dynamic || std::abs(snap.gr - last.gr) > 0.05f)
             {
                 changed = true;
                 last = snap;
@@ -525,6 +647,37 @@ private:
     }
 
     //==============================================================================
+    void drawSpectrumLegend(juce::Graphics &g)
+    {
+        // Draw a small legend in the top-right area showing current mode's colors
+        const int legendX = getWidth() - 140;
+        const int legendY = 6;
+        g.setFont(juce::FontOptions(9.0f));
+
+        switch (spectrumDisplayMode)
+        {
+            case SpectrumDisplayMode::LR_Mix:
+                g.setColour(juce::Colour(0x80FFFFFF));
+                g.drawText("Pre", legendX, legendY, 25, 10, juce::Justification::centredRight);
+                g.setColour(juce::Colour(0x8000D4FF));
+                g.drawText("Post", legendX + 28, legendY, 25, 10, juce::Justification::centredRight);
+                break;
+            case SpectrumDisplayMode::LR_Split:
+                g.setColour(juce::Colour(0xFF4D96FF));
+                g.drawText("L", legendX, legendY, 15, 10, juce::Justification::centred);
+                g.setColour(juce::Colour(0xFFFF6B6B));
+                g.drawText("R", legendX + 18, legendY, 15, 10, juce::Justification::centred);
+                break;
+            case SpectrumDisplayMode::MS_Split:
+                g.setColour(juce::Colour(0xFFFFFFFF));
+                g.drawText("M", legendX, legendY, 15, 10, juce::Justification::centred);
+                g.setColour(juce::Colour(0xFFFFD93D));
+                g.drawText("S", legendX + 18, legendY, 15, 10, juce::Justification::centred);
+                break;
+        }
+    }
+
+    //==============================================================================
     void drawCachedBandCurve(juce::Graphics &g, juce::Rectangle<float> bounds, int bandIndex)
     {
         auto &snap = lastSnapshots[static_cast<size_t>(bandIndex)];
@@ -560,7 +713,18 @@ private:
         g.fillPath(fillPath);
 
         g.setColour(colour);
-        g.strokePath(bandPath, juce::PathStrokeType(1.0f));
+        // Use dashed stroke for non-Stereo channel modes
+        if (lastSnapshots[static_cast<size_t>(bandIndex)].channel > 0)
+        {
+            juce::Path dashedPath;
+            float dashLengths[] = { 4.0f, 3.0f };
+            juce::PathStrokeType(1.0f).createDashedStroke(dashedPath, bandPath, dashLengths, 2);
+            g.fillPath(dashedPath);
+        }
+        else
+        {
+            g.strokePath(bandPath, juce::PathStrokeType(1.0f));
+        }
     }
 
     //==============================================================================
@@ -630,6 +794,18 @@ private:
         g.drawText(juce::String(bandIndex + 1),
                    static_cast<int>(x) - 5, static_cast<int>(y) - 5, 10, 10,
                    juce::Justification::centred);
+
+        // Channel mode label (show below node for non-Stereo modes)
+        int channelMode = static_cast<int>(apvts.getRawParameterValue(prefix + "channel")->load());
+        if (channelMode > 0)
+        {
+            const char* modeLabels[] = { "", "L", "R", "M", "S" };
+            g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+            g.setColour(colour.withAlpha(0.9f));
+            g.drawText(modeLabels[channelMode],
+                       static_cast<int>(x) - 8, static_cast<int>(y) + static_cast<int>(currentRadius) + 1, 16, 10,
+                       juce::Justification::centred);
+        }
     }
 
     //==============================================================================

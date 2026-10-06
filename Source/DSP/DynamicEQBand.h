@@ -29,6 +29,10 @@ struct BandParams
     // Filter type
     enum class FilterType { LowShelf, Peak, HighShelf, LowCut, HighCut, Notch, BandPass };
     FilterType type = FilterType::Peak;
+
+    // Channel processing mode for stereo separation
+    enum class ChannelMode { Stereo, Left, Right, Mid, Side };
+    ChannelMode channelMode = ChannelMode::Stereo;
 };
 
 //==============================================================================
@@ -74,21 +78,24 @@ class DynamicEQBand
 {
 public:
     static constexpr int maxOrder = 2; // second-order IIR
+    static constexpr int maxChannels = 2; // L and R (or M and S)
 
     void prepare (const juce::dsp::ProcessSpec& spec)
     {
         sampleRate = spec.sampleRate;
         envelopeFollower.prepare (sampleRate);
 
-        for (auto& f : filters)
+        // Prepare per-channel IIR filters (always 2 channels for L/R or M/S)
+        juce::dsp::ProcessSpec monoSpec;
+        monoSpec.sampleRate       = spec.sampleRate;
+        monoSpec.maximumBlockSize = spec.maximumBlockSize;
+        monoSpec.numChannels      = 1;
+
+        for (auto& f : channelFilters)
         {
             f.reset();
-            f.prepare (spec);
+            f.prepare (monoSpec);
         }
-
-        // Sidechain bandpass filter for envelope detection
-        sidechainFilter.reset();
-        sidechainFilter.prepare (spec);
 
         gainReductionDB.store (0.0f);
     }
@@ -98,10 +105,9 @@ public:
         params = p;
         envelopeFollower.setAttackRelease (p.attackMs, p.releaseMs);
         updateFilterCoefficients (p.gain);
-        updateSidechainFilter();
     }
 
-    // Process audio in-place (stereo interleaved via AudioBuffer)
+    // Process audio in-place (stereo AudioBuffer)
     void process (juce::AudioBuffer<float>& buffer)
     {
         if (! params.enabled)
@@ -110,141 +116,243 @@ public:
             return;
         }
 
-        const int numSamples = buffer.getNumSamples();
         const int numChannels = buffer.getNumChannels();
+        const bool isStereoBuffer = (numChannels >= 2);
+        const auto mode = params.channelMode;
+
+        // --- M/S encode if needed ---
+        if (isStereoBuffer && (mode == BandParams::ChannelMode::Mid || mode == BandParams::ChannelMode::Side))
+            encodeMidSide (buffer);
 
         if (! params.dynamicOn)
         {
-            // Static EQ - just apply filter
-            auto block = juce::dsp::AudioBlock<float> (buffer);
-            auto context = juce::dsp::ProcessContextReplacing<float> (block);
-            for (auto& f : filters)
-                f.process (context);
+            // Static EQ processing
+            applyFilters (buffer, mode, isStereoBuffer);
             gainReductionDB.store (0.0f);
-            return;
         }
-
-        // Dynamic EQ processing: sample-by-sample gain computation
-        // 1) Detect level using sidechain bandpass
-        // 2) Compute gain reduction
-        // 3) Apply dynamic gain via filter coefficient modulation
-
-        // We'll do a simpler approach: compute per-block gain reduction
-        // and blend the filter gain accordingly
-
-        // Get sidechain level (mono sum)
-        float peakLevel = 0.0f;
-        for (int ch = 0; ch < numChannels; ++ch)
+        else
         {
-            const float* data = buffer.getReadPointer (ch);
-            for (int i = 0; i < numSamples; ++i)
-                peakLevel = std::max (peakLevel, std::abs (data[i]));
+            // Dynamic EQ: detect level on target channel(s), compute reduction, apply
+            float peakLevel = detectLevel (buffer, mode, isStereoBuffer);
+
+            float levelDB = juce::Decibels::gainToDecibels (peakLevel, -100.0f);
+            float envDB = juce::Decibels::gainToDecibels (
+                envelopeFollower.process (juce::Decibels::decibelsToGain (levelDB, -100.0f)),
+                -100.0f);
+
+            float reductionDB = 0.0f;
+            if (envDB > params.threshold)
+            {
+                float excess = envDB - params.threshold;
+                reductionDB = excess - excess / params.ratio;
+            }
+
+            gainReductionDB.store (reductionDB);
+
+            float dynamicGain = params.gain - reductionDB;
+            updateFilterCoefficients (dynamicGain);
+
+            applyFilters (buffer, mode, isStereoBuffer);
         }
 
-        float levelDB = juce::Decibels::gainToDecibels (peakLevel, -100.0f);
-        float envDB = juce::Decibels::gainToDecibels (
-            envelopeFollower.process (juce::Decibels::decibelsToGain (levelDB, -100.0f)),
-            -100.0f);
-
-        // Compute gain reduction
-        float reductionDB = 0.0f;
-        if (envDB > params.threshold)
-        {
-            float excess = envDB - params.threshold;
-            reductionDB = excess - excess / params.ratio;
-        }
-
-        gainReductionDB.store (reductionDB);
-
-        // Apply dynamic gain: modulate the static gain by the reduction
-        float dynamicGain = params.gain - reductionDB;
-        updateFilterCoefficients (dynamicGain);
-
-        auto block = juce::dsp::AudioBlock<float> (buffer);
-        auto context = juce::dsp::ProcessContextReplacing<float> (block);
-        for (auto& f : filters)
-            f.process (context);
+        // --- M/S decode if needed ---
+        if (isStereoBuffer && (mode == BandParams::ChannelMode::Mid || mode == BandParams::ChannelMode::Side))
+            decodeMidSide (buffer);
     }
 
     float getGainReductionDB() const { return gainReductionDB.load(); }
     const BandParams& getParams() const { return params; }
 
 private:
+    //==============================================================================
+    // Mid/Side encoding: L,R -> M,S  where M=(L+R)*0.5, S=(L-R)*0.5
+    //==============================================================================
+    static void encodeMidSide (juce::AudioBuffer<float>& buffer)
+    {
+        const int numSamples = buffer.getNumSamples();
+        float* left  = buffer.getWritePointer (0);
+        float* right = buffer.getWritePointer (1);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float l = left[i];
+            float r = right[i];
+            left[i]  = (l + r) * 0.5f;  // Mid
+            right[i] = (l - r) * 0.5f;  // Side
+        }
+    }
+
+    //==============================================================================
+    // Mid/Side decoding: M,S -> L,R  where L=M+S, R=M-S
+    //==============================================================================
+    static void decodeMidSide (juce::AudioBuffer<float>& buffer)
+    {
+        const int numSamples = buffer.getNumSamples();
+        float* mid  = buffer.getWritePointer (0);
+        float* side = buffer.getWritePointer (1);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float m = mid[i];
+            float s = side[i];
+            mid[i]  = m + s;  // Left
+            side[i] = m - s;  // Right
+        }
+    }
+
+    //==============================================================================
+    // Detect peak level on the target channel(s) for envelope following
+    //==============================================================================
+    float detectLevel (const juce::AudioBuffer<float>& buffer,
+                       BandParams::ChannelMode mode, bool isStereo) const
+    {
+        const int numSamples = buffer.getNumSamples();
+        float peakLevel = 0.0f;
+
+        // Determine which channel(s) to detect on
+        // After M/S encode: ch0=Mid, ch1=Side
+        // For L/R mode: ch0=Left, ch1=Right
+        switch (mode)
+        {
+            case BandParams::ChannelMode::Left:
+            case BandParams::ChannelMode::Mid:
+            {
+                const float* data = buffer.getReadPointer (0);
+                for (int i = 0; i < numSamples; ++i)
+                    peakLevel = std::max (peakLevel, std::abs (data[i]));
+                break;
+            }
+            case BandParams::ChannelMode::Right:
+            case BandParams::ChannelMode::Side:
+            {
+                if (isStereo)
+                {
+                    const float* data = buffer.getReadPointer (1);
+                    for (int i = 0; i < numSamples; ++i)
+                        peakLevel = std::max (peakLevel, std::abs (data[i]));
+                }
+                break;
+            }
+            case BandParams::ChannelMode::Stereo:
+            default:
+            {
+                for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                {
+                    const float* data = buffer.getReadPointer (ch);
+                    for (int i = 0; i < numSamples; ++i)
+                        peakLevel = std::max (peakLevel, std::abs (data[i]));
+                }
+                break;
+            }
+        }
+
+        return peakLevel;
+    }
+
+    //==============================================================================
+    // Apply IIR filters to the appropriate channel(s) based on channel mode
+    //==============================================================================
+    void applyFilters (juce::AudioBuffer<float>& buffer,
+                       BandParams::ChannelMode mode, bool isStereo)
+    {
+        const int numSamples = buffer.getNumSamples();
+
+        switch (mode)
+        {
+            case BandParams::ChannelMode::Stereo:
+            {
+                // Process both channels
+                processChannel (buffer, 0, numSamples, channelFilters[0]);
+                if (isStereo)
+                    processChannel (buffer, 1, numSamples, channelFilters[1]);
+                break;
+            }
+            case BandParams::ChannelMode::Left:
+            case BandParams::ChannelMode::Mid:   // After M/S encode, ch0 = Mid
+            {
+                processChannel (buffer, 0, numSamples, channelFilters[0]);
+                break;
+            }
+            case BandParams::ChannelMode::Right:
+            case BandParams::ChannelMode::Side:  // After M/S encode, ch1 = Side
+            {
+                if (isStereo)
+                    processChannel (buffer, 1, numSamples, channelFilters[1]);
+                break;
+            }
+        }
+    }
+
+    //==============================================================================
+    // Process a single channel through its IIR filter
+    //==============================================================================
+    static void processChannel (juce::AudioBuffer<float>& buffer, int channel, int numSamples,
+                                juce::dsp::IIR::Filter<float>& filter)
+    {
+        float* data = buffer.getWritePointer (channel);
+        for (int i = 0; i < numSamples; ++i)
+            data[i] = filter.processSample (data[i]);
+    }
+
+    //==============================================================================
     void updateFilterCoefficients (float gainDB)
     {
         if (sampleRate <= 0.0)
             return;
 
-        juce::ReferenceCountedArray<juce::dsp::IIR::Coefficients<float>> coeffs;
+        juce::dsp::IIR::Coefficients<float>::Ptr coeffs;
 
         switch (params.type)
         {
             case BandParams::FilterType::LowShelf:
-                coeffs.add (juce::dsp::IIR::Coefficients<float>::makeLowShelf (
-                    sampleRate, params.frequency, params.q, juce::Decibels::decibelsToGain (gainDB)));
+                coeffs = juce::dsp::IIR::Coefficients<float>::makeLowShelf (
+                    sampleRate, params.frequency, params.q, juce::Decibels::decibelsToGain (gainDB));
                 break;
             case BandParams::FilterType::Peak:
-                coeffs.add (juce::dsp::IIR::Coefficients<float>::makePeakFilter (
-                    sampleRate, params.frequency, params.q, juce::Decibels::decibelsToGain (gainDB)));
+                coeffs = juce::dsp::IIR::Coefficients<float>::makePeakFilter (
+                    sampleRate, params.frequency, params.q, juce::Decibels::decibelsToGain (gainDB));
                 break;
             case BandParams::FilterType::HighShelf:
-                coeffs.add (juce::dsp::IIR::Coefficients<float>::makeHighShelf (
-                    sampleRate, params.frequency, params.q, juce::Decibels::decibelsToGain (gainDB)));
+                coeffs = juce::dsp::IIR::Coefficients<float>::makeHighShelf (
+                    sampleRate, params.frequency, params.q, juce::Decibels::decibelsToGain (gainDB));
                 break;
             case BandParams::FilterType::LowCut:
-                // High-pass filter (cuts low frequencies) — gain not applicable
-                coeffs.add (juce::dsp::IIR::Coefficients<float>::makeHighPass (
-                    sampleRate, params.frequency, params.q));
+                coeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass (
+                    sampleRate, params.frequency, params.q);
                 break;
             case BandParams::FilterType::HighCut:
-                // Low-pass filter (cuts high frequencies) — gain not applicable
-                coeffs.add (juce::dsp::IIR::Coefficients<float>::makeLowPass (
-                    sampleRate, params.frequency, params.q));
+                coeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass (
+                    sampleRate, params.frequency, params.q);
                 break;
             case BandParams::FilterType::Notch:
             {
-                // Standard biquad notch: b0=1, b1=-2cos(w0), b2=1, a0=1+alpha, a1=-2cos(w0), a2=1-alpha
                 float w0    = juce::MathConstants<float>::twoPi * params.frequency / static_cast<float>(sampleRate);
                 float cosW0 = std::cos(w0);
                 float alpha = std::sin(w0) / (2.0f * params.q);
-                coeffs.add (new juce::dsp::IIR::Coefficients<float> (
+                coeffs = new juce::dsp::IIR::Coefficients<float> (
                     1.0f, -2.0f * cosW0, 1.0f,
-                    1.0f + alpha, -2.0f * cosW0, 1.0f - alpha));
+                    1.0f + alpha, -2.0f * cosW0, 1.0f - alpha);
                 break;
             }
             case BandParams::FilterType::BandPass:
-                coeffs.add (juce::dsp::IIR::Coefficients<float>::makeBandPass (
-                    sampleRate, params.frequency, params.q));
+                coeffs = juce::dsp::IIR::Coefficients<float>::makeBandPass (
+                    sampleRate, params.frequency, params.q);
                 break;
         }
 
-        if (coeffs.size() > 0)
+        if (coeffs != nullptr)
         {
-            for (auto& f : filters)
-                *f.state = *coeffs[0];
+            for (auto& f : channelFilters)
+                f.coefficients = coeffs;
         }
-    }
-
-    void updateSidechainFilter()
-    {
-        if (sampleRate <= 0.0)
-            return;
-
-        auto coeffs = juce::dsp::IIR::Coefficients<float>::makeBandPass (
-            sampleRate, params.frequency, params.q);
-        *sidechainFilter.state = *coeffs;
     }
 
     BandParams params;
     double sampleRate = 44100.0;
     EnvelopeFollower envelopeFollower;
 
-    // Stereo processing filter (duplicated for L/R via ProcessorDuplicator)
-    using Filter = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
-                                                   juce::dsp::IIR::Coefficients<float>>;
-    std::array<Filter, 1> filters; // Single second-order section
-
-    Filter sidechainFilter;
+    // Per-channel IIR filters: [0]=Left/Mid, [1]=Right/Side
+    std::array<juce::dsp::IIR::Filter<float>, maxChannels> channelFilters;
 
     std::atomic<float> gainReductionDB { 0.0f };
 };

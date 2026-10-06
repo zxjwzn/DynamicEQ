@@ -67,6 +67,12 @@ public:
     SpectrumAnalyzer& getPreSpectrumAnalyzer()  { return preSpectrum; }
     SpectrumAnalyzer& getPostSpectrumAnalyzer() { return postSpectrum; }
 
+    // Per-channel spectrum analyzers for L/R display
+    SpectrumAnalyzer& getPreSpectrumL()  { return preSpectrumL; }
+    SpectrumAnalyzer& getPreSpectrumR()  { return preSpectrumR; }
+    SpectrumAnalyzer& getPostSpectrumL() { return postSpectrumL; }
+    SpectrumAnalyzer& getPostSpectrumR() { return postSpectrumR; }
+
     float getBandGainReduction (int bandIndex) const;
     double getCurrentSampleRate() const { return lastSampleRate; }
 
@@ -85,6 +91,12 @@ private:
     // Spectrum analysis
     SpectrumAnalyzer preSpectrum;
     SpectrumAnalyzer postSpectrum;
+
+    // Per-channel spectrum analyzers
+    SpectrumAnalyzer preSpectrumL;
+    SpectrumAnalyzer preSpectrumR;
+    SpectrumAnalyzer postSpectrumL;
+    SpectrumAnalyzer postSpectrumR;
 
     double lastSampleRate = 44100.0;
 

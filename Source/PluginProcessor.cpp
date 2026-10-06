@@ -88,6 +88,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout
             "Band " + juce::String (i + 1) + " Type",
             juce::StringArray { "Low Shelf", "Peak", "High Shelf", "Low Cut", "High Cut", "Notch", "Band Pass" },
             (i == 0) ? 0 : ((i == numBands - 1) ? 2 : 1)));
+
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { prefix + "channel", 1 },
+            "Band " + juce::String (i + 1) + " Channel",
+            juce::StringArray { "Stereo", "Left", "Right", "Mid", "Side" },
+            0));
     }
 
     return layout;
@@ -237,6 +243,9 @@ void DynamicEQAudioProcessor::updateBandParams (int bandIndex)
     int typeIndex = static_cast<int> (apvts.getRawParameterValue (prefix + "type")->load());
     p.type = static_cast<BandParams::FilterType> (typeIndex);
 
+    int channelIndex = static_cast<int> (apvts.getRawParameterValue (prefix + "channel")->load());
+    p.channelMode = static_cast<BandParams::ChannelMode> (channelIndex);
+
     bands[static_cast<size_t> (bandIndex)].updateParams (p);
 }
 
@@ -252,7 +261,7 @@ void DynamicEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Push pre-EQ spectrum data (mono sum)
+    // Push pre-EQ spectrum data (mono sum + per-channel)
     {
         const int numSamples = buffer.getNumSamples();
         const int numChannels = buffer.getNumChannels();
@@ -264,6 +273,12 @@ void DynamicEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             monoBuffer.addFrom (0, 0, buffer, ch, 0, numSamples, 1.0f / static_cast<float> (numChannels));
 
         preSpectrum.pushSamples (monoBuffer.getReadPointer (0), numSamples);
+
+        // Per-channel pre-EQ spectrum
+        if (numChannels >= 1)
+            preSpectrumL.pushSamples (buffer.getReadPointer (0), numSamples);
+        if (numChannels >= 2)
+            preSpectrumR.pushSamples (buffer.getReadPointer (1), numSamples);
     }
 
     // Update and process each ACTIVE band only
@@ -273,7 +288,7 @@ void DynamicEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         bands[static_cast<size_t> (i)].process (buffer);
     }
 
-    // Push post-EQ spectrum data
+    // Push post-EQ spectrum data (mono sum + per-channel)
     {
         const int numSamples = buffer.getNumSamples();
         const int numChannels = buffer.getNumChannels();
@@ -284,6 +299,12 @@ void DynamicEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             monoBuffer.addFrom (0, 0, buffer, ch, 0, numSamples, 1.0f / static_cast<float> (numChannels));
 
         postSpectrum.pushSamples (monoBuffer.getReadPointer (0), numSamples);
+
+        // Per-channel post-EQ spectrum
+        if (numChannels >= 1)
+            postSpectrumL.pushSamples (buffer.getReadPointer (0), numSamples);
+        if (numChannels >= 2)
+            postSpectrumR.pushSamples (buffer.getReadPointer (1), numSamples);
     }
 }
 

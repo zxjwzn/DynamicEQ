@@ -34,6 +34,7 @@ private:
     juce::ToggleButton enableBtn;
     juce::ToggleButton dynamicBtn;
     juce::ComboBox typeCombo;
+    juce::ComboBox channelCombo;
 
     // Label as text
     juce::Label freqLabel, gainLabel, qLabel;
@@ -48,6 +49,7 @@ private:
     std::unique_ptr<SliderAttachment> threshAtt, ratioAtt, attackAtt, releaseAtt;
     std::unique_ptr<ButtonAttachment> enableAtt, dynamicAtt;
     std::unique_ptr<ComboAttachment>  typeAtt;
+    std::unique_ptr<ComboAttachment>  channelAtt;
 
     void setupSlider (juce::Slider& slider, juce::Label& label, const juce::String& text);
 
@@ -94,8 +96,8 @@ private:
 
     static constexpr int navBarH    = 28;
     static constexpr int controlH   = 290;
-    static constexpr int stripMinW  = 220;   // minimum strip width (triggers scroll)
-    static constexpr int stripMaxW  = 250;   // maximum strip width (prevents over-stretch)
+    static constexpr int stripMinW  = 290;   // minimum strip width (triggers scroll)
+    static constexpr int stripMaxW  = 300;   // maximum strip width (prevents over-stretch)
 
     void updateBandVisibility();
 

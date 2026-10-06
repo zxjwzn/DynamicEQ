@@ -304,6 +304,15 @@ BandControlStrip::BandControlStrip (DynamicEQAudioProcessor& p, int index)
     addAndMakeVisible (typeCombo);
     typeAtt = std::make_unique<ComboAttachment> (apvts, prefix + "type", typeCombo);
 
+    // Channel mode combo
+    channelCombo.addItem (juce::String::fromUTF8 ("\u7acb\u4f53\u58f0"),  1);  // Stereo
+    channelCombo.addItem (juce::String::fromUTF8 ("\u5de6"),       2);  // Left
+    channelCombo.addItem (juce::String::fromUTF8 ("\u53f3"),       3);  // Right
+    channelCombo.addItem ("Mid",      4);
+    channelCombo.addItem ("Side",     5);
+    addAndMakeVisible (channelCombo);
+    channelAtt = std::make_unique<ComboAttachment> (apvts, prefix + "channel", channelCombo);
+
     // Enable/Dynamic toggles
     enableBtn.setButtonText (juce::String::fromUTF8 ("\u542f\u7528"));
     dynamicBtn.setButtonText (juce::String::fromUTF8 ("\u52a8\u6001"));
@@ -376,12 +385,15 @@ void BandControlStrip::resized()
     auto bounds = getLocalBounds().reduced (4);
     bounds.removeFromTop (24); // Title area
 
-    // Top row: enable, type, dynamic
+    // Top row: enable, type, channel, dynamic
     auto topRow = bounds.removeFromTop (26);
     enableBtn.setBounds (topRow.removeFromLeft (58));
     dynamicBtn.setBounds (topRow.removeFromRight (58));
-    auto comboW = juce::jmin (100, topRow.getWidth());
-    typeCombo.setBounds (topRow.withSizeKeepingCentre (comboW, topRow.getHeight()));
+    // Split remaining space between type and channel combos
+    auto comboArea = topRow;
+    int halfW = comboArea.getWidth() / 2;
+    typeCombo.setBounds (comboArea.removeFromLeft (halfW).reduced (1, 0));
+    channelCombo.setBounds (comboArea.reduced (1, 0));
 
     bounds.removeFromTop (3);
 
